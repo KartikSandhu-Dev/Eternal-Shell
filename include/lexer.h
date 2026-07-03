@@ -16,6 +16,8 @@ typedef enum TokenType {
 	TOKEN_REDIR_IN, // <
 	TOKEN_REDIR_OUT, // >
 	TOKEN_APPEND, // >>
+	TOKEN_AND, // &&
+	TOKEN_BACKGROUND, // &
 	TOKEN_EOF 
 } TokenType;
 

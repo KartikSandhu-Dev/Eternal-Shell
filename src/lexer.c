@@ -1,7 +1,6 @@
 #include "lexer.h"
 #include <ctype.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -16,13 +15,14 @@ TokenList tokenize(const char *buffer) {
 	token_list.tokens = malloc(sizeof(Token) * token_list.capacity);
 
 	while(1) {
+		if(token_list.count >= token_list.capacity) {
+			token_list.capacity += 5;
+			token_list.tokens = realloc(token_list.tokens, 
+				sizeof(Token)*token_list.capacity);
+		}
+
 		Token tok = next_token(&lex);
 		token_list.tokens[token_list.count] = tok;
-
-		if(token_list.count >= token_list.capacity) {
-			token_list.tokens = realloc(token_list.tokens, 
-				sizeof(Token)*(token_list.count + 5));
-		}
 
 		if(tok.token_type == TOKEN_EOF) { break; }
 
@@ -33,7 +33,7 @@ TokenList tokenize(const char *buffer) {
 }
 
 static bool not_special_char(char input) {
-	char special_char[] = {'|', '>', '<', '\0', '\n'};
+	char special_char[] = {'|', '>', '<', '&', '\0', '\n'};
 
 	bool not_special = true;
 	for(int i = 0; i < (int)sizeof(special_char); i++) {
@@ -70,6 +70,15 @@ Token next_token(Lexer *lex) {
 			token.token_type = TOKEN_REDIR_IN;
 			break;
 
+		case '&':
+			if(peek(lex) == '&') {
+				token.token_type = TOKEN_AND;
+				advance(lex);
+			} else {
+				token.token_type = TOKEN_BACKGROUND;
+			}
+			break;
+
 		case '\0':
 			token.token_type = TOKEN_EOF;
 			break;
@@ -102,6 +111,19 @@ char peek(Lexer *lex) {
 	return lex->source[lex->pos + 1];
 }
 
+static char *strip_quotes(char *input, size_t len) {
+	if(input[0] == '\'' || input[0] == '"') {
+		if(len < 2) { return strdup(input); }
+
+		char *out = malloc(len - 1);
+		memcpy(out, input+1, len-2);
+		out[len-2] = '\0';
+
+		return out;
+	}
+	return input;
+}
+
 Token read_word(Lexer *lex) {
 	bool in_quote = false;
 	char quote;
@@ -114,7 +136,7 @@ Token read_word(Lexer *lex) {
 		if(c == '\0') { break; }
 
 		if(!in_quote) {
-			if(isspace(c)) {
+			if(isspace(c) || !not_special_char(c)) {
 				break;
 			}
 			if(c == '"' || c == '\'') {
@@ -139,6 +161,8 @@ Token read_word(Lexer *lex) {
 	memcpy(token.value, lex->source + start, len);
 
 	token.value[len] = '\0';
+
+	token.value = strip_quotes(token.value, len);
 
 	return token;
 }
@@ -178,10 +202,17 @@ void print_tokens(TokenList *token_list) {
             case TOKEN_APPEND:
             	printf("APPEND(>>)\n");
             	break;
+            case TOKEN_AND:
+            	printf("AND(&&)\n");
+            	break;
+            case TOKEN_BACKGROUND:
+            	printf("BACKGROUND(&)\n");
+            	break;
             case TOKEN_EOF:
             	printf("EOF\n");
             	return;
-        }
+              break;
+            }
         pos++;
     }
 }

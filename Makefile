@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Ilexer -Iparser -I./include
+CFLAGS = -Wall -Wextra -Ilexer -Iparser -I./include 
 
 SRC = src/main.c \
       src/lexer.c \

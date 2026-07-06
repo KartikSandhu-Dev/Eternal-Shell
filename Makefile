@@ -9,7 +9,7 @@ SRC = src/main.c \
       src/shell/expand.c \
       src/shell/history.c \
       src/exec/execute.c \
-      src/exec/builtin.c \
+      src/exec/builtin.c 
 
 OBJ = $(SRC:.c=.o)
 

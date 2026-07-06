@@ -187,32 +187,31 @@ void print_tokens(TokenList *token_list) {
 	size_t pos = 0;
 	while(1) {
 		switch (token_list->tokens[pos].token_type) {
-            case TOKEN_WORD:
-            	printf("WORD(%s)\n", token_list->tokens[pos].value);
-            	break;
-            case TOKEN_PIPE:
-            	printf("PIPE(|)\n");
-            	break;
-            case TOKEN_REDIR_IN:
-            	printf("REDIR_IN(<)\n");
-            	break;
-            case TOKEN_REDIR_OUT:
-            	printf("REDIR_OUT(>)\n");
-            	break;
-            case TOKEN_APPEND:
-            	printf("APPEND(>>)\n");
-            	break;
-            case TOKEN_AND:
-            	printf("AND(&&)\n");
-            	break;
-            case TOKEN_BACKGROUND:
-            	printf("BACKGROUND(&)\n");
-            	break;
-            case TOKEN_EOF:
-            	printf("EOF\n");
-            	return;
-              break;
-            }
+	        case TOKEN_WORD:
+	        	printf("WORD(%s)\n", token_list->tokens[pos].value);
+	          	break;
+	        case TOKEN_PIPE:
+	          	printf("PIPE(|)\n");
+	          	break;
+	        case TOKEN_REDIR_IN:
+	          	printf("REDIR_IN(<)\n");
+	          	break;
+	        case TOKEN_REDIR_OUT:
+	          	printf("REDIR_OUT(>)\n");
+	          	break;
+	        case TOKEN_APPEND:
+	          	printf("APPEND(>>)\n");
+	          	break;
+	        case TOKEN_AND:
+	          	printf("AND(&&)\n");
+	          	break;
+	        case TOKEN_BACKGROUND:
+	          	printf("BACKGROUND(&)\n");
+	          	break;
+	        case TOKEN_EOF:
+	          	printf("EOF\n");
+	          	return;
+	    }
         pos++;
     }
 }

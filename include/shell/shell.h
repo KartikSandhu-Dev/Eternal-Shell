@@ -3,12 +3,10 @@
 
 #include "parse/lexer.h"
 #include "parse/parser.h"
-#include "shell/history.h"
 #include "var/config.h"
 
 typedef struct Shell {
 	char buffer[SHELL_BUFFER_LEN];
-	History history;
 
 	TokenList token_list;
 	ASTNode *ast;

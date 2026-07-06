@@ -4,8 +4,9 @@
 
 #include "parse/lexer.h"
 #include "parse/parser.h"
-#include "exec/execute.h"
 #include "shell/history.h"
+#include "exec/execute.h"
+
 
 #include <unistd.h>
 #include <sys/wait.h>
@@ -13,7 +14,7 @@
 
 void shell_init(char **envp) {
 	Shell shell;
-	history_init(&shell.history);
+	history_init();
 
 	while(1) {
 		print_prompt();
@@ -21,10 +22,10 @@ void shell_init(char **envp) {
 		char *line = read_line(shell.buffer, sizeof(shell.buffer));
 		if(line[0] == '\0' || !line) { continue; }
 
-		history_add(&shell.history, line);
+		history_add(line);
 
 		shell.token_list = tokenize(shell.buffer);
-
+		
 		shell.ast = parse_tokens(&shell.token_list);
 
 		execute(shell.ast, envp);

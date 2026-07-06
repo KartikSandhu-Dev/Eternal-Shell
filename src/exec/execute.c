@@ -1,4 +1,5 @@
 #include "exec/execute.h"
+#include "exec/builtin.h"
 #include "parse/parser.h"
 #include "var/common.h"
 #include "shell/expand.h"
@@ -89,6 +90,12 @@ static void execute_redir(ASTNode *node, char *path, char **envp) {
 }
 
 int execute_command(ASTNode *node, char **envp) {
+	BuiltIn builtin = find_builtin(node->Command.argv[0]);
+
+	if(builtin.name != NULL) {
+		return builtin.func(node);
+	}
+
 	pid_t pid = fork();
 
 	if(pid == 0) {

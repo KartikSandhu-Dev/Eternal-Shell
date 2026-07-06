@@ -1,11 +1,13 @@
-#include "execute.h"
-#include "parser.h"
+#include "exec/execute.h"
+#include "parse/parser.h"
 #include "var/common.h"
+#include "shell/expand.h"
 
 #include <linux/limits.h>
-#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -15,6 +17,7 @@ int execute(ASTNode *node, char **envp) {
 
 	switch (node->ast_type) {
 		case NODE_COMMAND:
+			if(expand_variables(node) == 1) { return 1; };
 			return execute_command(node, envp);
 		case NODE_PIPE:
 			return execute_pipe(node, envp);
@@ -33,7 +36,7 @@ char *resolve_path(const char *command_name) {
 		if(access(command_name, X_OK) == 0) {
 			return strdup(command_name);
 		} else {
-			fprintf(stderr, "Error: could not access '%s': %s\n", command_name, strerror(errno));
+			fprintf(stderr, "Error: could not execute '%s': %s\n", command_name, strerror(errno));
 			return NULL;
 		}
 	}
@@ -57,7 +60,7 @@ char *resolve_path(const char *command_name) {
 		dir = strtok(NULL, ":");
 	}
 
-	free(path);
+	free(path);	
 	fprintf(stderr, "%s: command not found\n", command_name);
 
 	return NULL;

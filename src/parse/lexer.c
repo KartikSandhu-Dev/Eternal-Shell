@@ -1,4 +1,4 @@
-#include "lexer.h"
+#include "parse/lexer.h"
 #include "var/common.h"
 #include "var/config.h"
 
@@ -14,29 +14,29 @@ static char peek(Lexer *lex) {
 	return lex->source[lex->pos + 1];
 }
 
-TokenList *tokenize(const char *buffer) {
+TokenList tokenize(const char *buffer) {
 	Lexer lex = {0};
 	lex.source = buffer;
 	lex.pos = 0;
 
-	TokenList *token_list = malloc(sizeof(TokenList));
-	token_list->capacity = MAX_ARGS;
-	token_list->count = 0;
-	token_list->tokens = malloc(sizeof(Token) * token_list->capacity);
+	TokenList token_list;
+	token_list.capacity = MAX_ARGS;
+	token_list.count = 0;
+	token_list.tokens = malloc(sizeof(Token) * token_list.capacity);
 
 	while(1) {
-		if(token_list->count >= token_list->capacity) {
-			token_list->capacity += 5; 
-			token_list->tokens = realloc(token_list->tokens, 
-				sizeof(Token)*token_list->capacity);
+		if(token_list.count >= token_list.capacity) {
+			token_list.capacity += 5; 
+			token_list.tokens = realloc(token_list.tokens, 
+				sizeof(Token)*token_list.capacity);
 		}
 
 		Token tok = next_token(&lex);
-		token_list->tokens[token_list->count] = tok;
+		token_list.tokens[token_list.count] = tok;
 
 		if(tok.token_type == TOKEN_EOF) { break; }
 
-		token_list->count++;
+		token_list.count++;
 	}
 
 	return token_list;
@@ -46,7 +46,7 @@ static bool not_special_char(const char input) {
 	char special_char[] = {'|', '>', '<', '&', '\0', '\n', '\t'};
 
 	bool not_special = true;
-	for(int i = 0; i < (int)sizeof(special_char); i++) {
+	for(size_t i = 0; i < sizeof(special_char); i++) {
 		if(input == special_char[i]) {
 			not_special = false;
 			return not_special;
@@ -178,7 +178,9 @@ void clean_tokens(TokenList *token_list) {
 		pos++;
 	}
 	free(token_list->tokens);
-	free(token_list);
+
+	token_list->capacity = 0;
+	token_list->count = 0;
 }
 
 void print_tokens(TokenList *token_list) {

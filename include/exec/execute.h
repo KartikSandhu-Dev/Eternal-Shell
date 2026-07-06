@@ -1,7 +1,7 @@
 #ifndef EXECUTE_H
 #define EXECUTE_H
 
-#include "parser.h"
+#include "parse/parser.h"
 
 int execute(ASTNode *node, char **envp);
 char *resolve_path(const char *command_name);

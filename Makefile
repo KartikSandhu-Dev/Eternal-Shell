@@ -2,11 +2,14 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Ilexer -Iparser -I./include 
 
 SRC = src/main.c \
-      src/lexer.c \
-      src/parser.c \
-      src/shell.c \
-      src/execute.c \
-      src/builtin.c \
+      src/parse/lexer.c \
+      src/parse/parser.c \
+      src/shell/shell.c \
+      src/shell/variable.c \
+      src/shell/expand.c \
+      src/shell/history.c \
+      src/exec/execute.c \
+      src/exec/builtin.c \
 
 OBJ = $(SRC:.c=.o)
 

@@ -1,7 +1,8 @@
-#include "lexer.h"
-#include "parser.h"
+#include "parse/lexer.h"
+#include "parse/parser.h"
 #include "var/config.h"
 #include "var/common.h"
+#include <string.h>
 
 static Token current(Parser *p) {
 	return p->token_list.tokens[p->pos];
@@ -20,6 +21,20 @@ ASTNode *parse_tokens(TokenList *token_list) {
 }
 
 static void free_command(ASTNode *node) {
+	size_t pos = 0;
+	while(1) {
+		free(node->Command.argv[pos]);
+		if(node->Command.argv[pos] == NULL) {
+			break;
+		}
+		pos++;
+	}
+
+	pos = 0;
+	while(pos < node->Command.redir_count) {
+		free(node->Command.redirs->file);
+	}
+
 	free(node->Command.argv);
 	free(node->Command.redirs);
 	free(node);
@@ -42,7 +57,7 @@ ASTNode *parse_command(Parser *p) {
 			return NULL;
 		}
 
-		node->Command.argv[node->Command.argc] = current(p).value;
+		node->Command.argv[node->Command.argc] = strdup(current(p).value);
 		node->Command.argc++;
 		advance(p);
 	}
@@ -76,7 +91,7 @@ ASTNode *parse_command(Parser *p) {
         advance(p);
 
         if(current(p).token_type == TOKEN_WORD) {
-        	r.file = current(p).value;
+        	r.file = strdup(current(p).value);
         } else {
         	fprintf(stderr, "No filepath after redirection\n");
         	free_command(node);

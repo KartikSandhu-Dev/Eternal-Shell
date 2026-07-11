@@ -198,7 +198,6 @@ void print_ASTs(ASTNode *node, int indent) {
 				printf("%s\n", node->Command.argv[pos]);
 				pos++;
 			}
-
 			break;
 		case NODE_PIPE:
 			printf("Pipe\n");

@@ -8,7 +8,12 @@
 void shell_var_init(Shell *shell) {
 	shell->vars.capacity = SHELL_VAR_CAPACITY;
 	shell->vars.count = 0;
-	shell->vars.s_vars = calloc(shell->vars.capacity, sizeof(ShellVar) * shell->vars.capacity);
+	shell->vars.s_vars = calloc(shell->vars.capacity, sizeof(ShellVar));
+
+	if (shell->vars.s_vars == NULL) {
+		perror("calloc");
+		exit(EXIT_FAILURE);
+	}
 }
 
 int expand_variables(Shell *shell, ASTNode *node) {
@@ -28,7 +33,7 @@ int expand_variables(Shell *shell, ASTNode *node) {
 			    node->Command.argv[pos] = strdup(var);
 			} else {
 			    node->Command.argv[pos] = strdup("");
-			    fprintf(stderr, "Unknown variable: %s does not exist\n", name);
+			    fprintf(stderr, "%s: unkown variable\n", name);
 			    free(name);
 			    return 1;
 			}

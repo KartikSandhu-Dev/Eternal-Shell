@@ -7,11 +7,12 @@
 
 #define SHELL_LOCATION "/usr/local/bin/lsh" // where lsh executable is stored
 
-#define SHELL_NAME "lsh"
+#define SHELL_NAME "[lsh]"
 #define SHELL_VAR_SYMBOL '$'
 
 #define HISTORY_CAPACITY 1024 // historty starting capacity
 #define SHELL_VAR_CAPACITY 1024 // shell var starting capacity
 #define JOBS_CAPACITY 128 // jobs starting capacity
+#define PIPELINE_CAPACITY 128 // pipelines capacity
 
 #endif

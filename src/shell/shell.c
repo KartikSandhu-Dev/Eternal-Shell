@@ -13,7 +13,10 @@
 #include <unistd.h>
 
 void shell_init(char **envp) {
-	Shell shell; 
+	Shell shell;
+
+	// shell becomes its own process group leader
+	setpgid(0, 0);
 
 	// give shell its values
 	shell.envp = duplicate_env(envp);
@@ -31,6 +34,9 @@ void shell_init(char **envp) {
 
 	// ------MAIN SHELL LOOP--------
 	while(1) {
+		// check the status of jobs (if any)
+		check_jobs(&shell);
+
 		// print prompt
 		print_prompt();
 		
@@ -51,9 +57,6 @@ void shell_init(char **envp) {
 
 		// add last status of the process to the "?" named shell variable
 		add_last_status(&shell);
-
-		// check the status of jobs
-		check_jobs(&shell);
 
 		// cleanup
 		clean_ASTs(ast);

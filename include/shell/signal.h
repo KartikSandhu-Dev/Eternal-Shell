@@ -13,7 +13,7 @@ typedef enum JobStatus {
 
 typedef struct Job {
 	int id;
-	int pid;
+	int pgid;
 	char *command;
 	JobStatus status;
 } Job;
@@ -31,6 +31,7 @@ void sig_child_init(Shell *shell);
 void add_job(Shell *shell, int pid);
 void check_jobs(Shell *shell);
 
+int find_job_index(Shell *shell, int id);
 void clean_job(Shell *shell, size_t index);
 
 #endif

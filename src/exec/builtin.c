@@ -1,10 +1,15 @@
 #include "exec/builtin.h"
 #include "shell/history.h"
+#include "shell/signal.h"
 #include "shell/variable.h"
 #include "var/common.h"
 #include "shell/shell.h"
 
 #include <linux/limits.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 static BuiltIn builtins[] = {
@@ -16,6 +21,8 @@ static BuiltIn builtins[] = {
 	{"unset", unset_builtin},
 	{"history", history_builtin},
 	{"jobs", jobs_builtin},
+	{"fg", fg_builtin},
+	{"bg", bg_builtin},
     {NULL, NULL}
 };
 
@@ -32,18 +39,19 @@ BuiltIn find_builtin(char *command) {
 }
 
 int cd_builtin(ASTNode *node, Shell *shell) {
+	(void)shell;
+
 	char *dir = malloc(sizeof(char) * PATH_MAX);
 	char *home = get_env_value(shell, "HOME");
 
-	if(node->Command.argc == 1) {
-		dir = home;
+	if (node->Command.argc == 1) {
+		snprintf(dir, PATH_MAX, "%s", home);
+	} else if (strcmp(node->Command.argv[1], "~") == 0) {
+		snprintf(dir, PATH_MAX, "%s", home);
+	} else if (strncmp(node->Command.argv[1], "~", 1) == 0) {
+		snprintf(dir, PATH_MAX, "%s%s", home, node->Command.argv[1] + 1);
 	} else {
-		// dir = node->Command.argv[1];
-		if(strcmp(node->Command.argv[1], "~") == 0) {
-			dir = home;
-		} else if (strncmp(node->Command.argv[1], "~", 1) == 0) {
-			snprintf(dir, PATH_MAX, "%s%s", home, node->Command.argv[1] + 1);
-		}
+		snprintf(dir, PATH_MAX, "%s", node->Command.argv[1]);
 	}
 
 	if(chdir(dir)) {
@@ -58,6 +66,7 @@ int cd_builtin(ASTNode *node, Shell *shell) {
 }
 
 int exit_builtin(ASTNode *node, Shell *shell) {
+	(void)shell;
 	int code = 0;
 
 	if(node->Command.argc > 1) {
@@ -68,6 +77,8 @@ int exit_builtin(ASTNode *node, Shell *shell) {
 }
 
 int pwd_builtin(ASTNode *node, Shell *shell) {
+	(void)shell;
+	(void)node;
 	char cwd[PATH_MAX];
 
 	if(getcwd(cwd, sizeof(cwd))) {
@@ -81,7 +92,8 @@ int pwd_builtin(ASTNode *node, Shell *shell) {
 }
 
 int echo_builtin(ASTNode *node, Shell *shell) {
-	for(int i = 1; i < node->Command.argc; i++) {
+	(void)shell;
+	for(size_t i = 1; i < node->Command.argc; i++) {
 		write(STDOUT_FILENO, node->Command.argv[i], strlen(node->Command.argv[i]));
 		write(STDOUT_FILENO, " ", 1);
 	}
@@ -97,21 +109,6 @@ static bool is_assignment(const char *str) {
 	if(equal == str) { return false; }
 
 	return true;
-}
-
-static bool add_assingment(ASTNode *node, Shell *shell, int pos) {
-	char *equal = strchr(node->Command.argv[pos], '=');
-	*equal = '\0';
-
-	ShellVar var = {0};
-	var.name = strdup(node->Command.argv[pos]);
-	var.value = strdup(equal + 1);
-
-	add_shell_var(shell, var);
-
-	*equal = '=';
-
-	return 0;
 }
 
 int export_builtin(ASTNode *node, Shell *shell) {
@@ -172,20 +169,103 @@ int history_builtin(ASTNode *node, Shell *shell) {
 }
 
 int jobs_builtin(ASTNode *node, Shell *shell) {
+	(void)node;
+
 	for(size_t i = 0; i < shell->joblist.count; i++) {
 		Job *job = &shell->joblist.jobs[i];
 
 		switch (job->status) {
 			case JOB_RUNNING:
-				printf("|%d| running %s\n", job->id, job->command);
+				printf("|%d| Running (%s)\n", job->id, job->command);
 				break;
 			case JOB_STOPPED:
-				printf("|%d| stopped %s\n", job->id, job->command);
+				printf("|%d| Stopped (%s)\n", job->id, job->command);
 				break;
 			case JOB_DONE:
-				printf("|%d| done %s\n", job->id, job->command);
+				printf("|%d| Done (%s)\n", job->id, job->command);
 				break;
 		}
 	}
+	return 0;
+}
+
+int bg_builtin(ASTNode *node, Shell *shell) {
+	int id_user;
+
+	if(node->Command.argv[1] == NULL) { id_user = 1; } 
+	else { id_user = atoi(node->Command.argv[1]); }
+
+	int job_idx = find_job_index(shell, id_user);
+
+	if(job_idx == -1) {
+		fprintf(stderr, "Job: id |%s| does not exist\n", node->Command.argv[1]);
+		return 1;
+	}
+
+	Job *job = &shell->joblist.jobs[job_idx];
+
+	switch (job->status) {
+		case JOB_RUNNING:
+			printf("Job: id |%d| is already running\n", job->id);
+			return 0;
+		case JOB_STOPPED:
+			printf("Job: id |%d| has been started again\n", job->id);
+			break;
+		case JOB_DONE:
+			printf("Job: id |%d| is already done\n", job->id);
+			return 0;
+	}
+
+	if(kill(-job->pgid, SIGCONT) < 0) {
+		perror("bg: kill (SIGCONT) failed");
+		return -1;
+	}
+
+	job->status = JOB_RUNNING;
+
+	return 0;
+}
+
+int fg_builtin(ASTNode *node, Shell *shell) {
+	int id_user;
+
+	if(node->Command.argv[1] == NULL) { id_user = 1; } 
+	else { id_user = atoi(node->Command.argv[1]); }
+
+	int job_idx = find_job_index(shell, id_user);
+
+	if(job_idx == -1) {
+		fprintf(stderr, "Job: id %s does not exist\n", node->Command.argv[1]);
+		return 1;
+	}
+
+	Job *job = &shell->joblist.jobs[job_idx];
+
+	int status;
+
+	tcsetpgrp(STDIN_FILENO, job->pgid);
+
+	if(kill(-job->pgid, SIGCONT) < 0) {
+		perror("bg: kill (SIGCONT) failed");
+		tcsetpgrp(STDIN_FILENO, getpgrp());
+		return -1;
+	}
+
+	pid_t ret = waitpid(-job->pgid, &status, WUNTRACED);
+
+	if(ret == -1) {
+		perror("waitpid");
+		tcsetpgrp(STDIN_FILENO, getpgrp());
+		return 1;
+	}
+
+	tcsetpgrp(STDIN_FILENO, getpgrp());
+
+	if (WIFSTOPPED(status)) {
+		job->status = JOB_STOPPED;
+	} else if (WIFEXITED(status) || WIFSIGNALED(status)) {
+		clean_job(shell, job_idx);
+	}
+
 	return 0;
 }

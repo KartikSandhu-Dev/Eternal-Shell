@@ -10,7 +10,7 @@
 
 #include <linux/limits.h>
 #include <stdio.h>
-#include <string.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -27,7 +27,11 @@ int execute(ASTNode *node, Shell *shell) {
 			if(expand_variables(shell, node) == 1) { return 1; };
 			return execute_command(node, shell);
 		case NODE_PIPE:
-			return execute_pipe(node, shell);
+			{
+				Pipeline pipeline = {0};
+				collect_pipeline(node, &pipeline);
+				return execute_pipeline(&pipeline, shell);
+			}
 		case NODE_AND:
 			return execute_and(node, shell);
 		default:
@@ -78,6 +82,7 @@ char *resolve_path(Shell *shell, const char *command_name) {
 }
 
 static int *apply_redir(ASTNode *node, Shell *shell) {
+	(void)shell;
 	int *prev_fd = malloc(sizeof(int) *2);
 
 	prev_fd[1] = dup(STDOUT_FILENO);
@@ -161,6 +166,22 @@ static int add_assingment(ASTNode *node, Shell *shell) {
 	return 0;
 }
 
+static void exec_external(ASTNode *node, Shell *shell) {
+	sig_child_init(shell); // restore the signals to the default
+
+	char *path = resolve_path(shell, node->Command.argv[0]); // find the executable in the path
+	if(!path) { exit(EXIT_FAILURE); } 
+
+	// check for redirs, if present execute them
+	if(!apply_redir(node, shell)) { exit(EXIT_FAILURE); };
+
+	// if no redir execute normally
+	execve(path, node->Command.argv, shell->envp);
+
+	perror("execve");
+	exit(EXIT_FAILURE);
+}
+
 int execute_command(ASTNode *node, Shell *shell) {
 	BuiltIn builtin = find_builtin(node->Command.argv[0]);
 	// if the command is builtin, execute it
@@ -179,75 +200,157 @@ int execute_command(ASTNode *node, Shell *shell) {
 	}
 
 	// if none of the above find in PATH
-
 	pid_t pid = fork(); // make child process
 
 	if(pid == 0) {
-		char *path = resolve_path(shell, node->Command.argv[0]); // find the executable in the path
-		if(!path) { exit(EXIT_FAILURE); } 
+		// making the child its own pgid leader
+		setpgid(0, 0);
 
-		// check for redirs, if present execute them
-		if(!apply_redir(node, shell)) { exit(EXIT_FAILURE); };
-
-		// if no redir execute normally
-		execve(path, node->Command.argv, shell->envp);
-
-		perror("execve");
-		exit(EXIT_FAILURE);
+		exec_external(node, shell); // execute commands in PATH 
 	}
+
+	setpgid(pid, pid);
 
 	int status = 0;
 
 	if(node->Command.background) {
-		add_job(shell, pid);
+		add_job(shell, pid); // add it to the background jobs
 	} else {
-		waitpid(pid, &status, 0); // wait for the child
+		tcsetpgrp(STDIN_FILENO, pid); // give the terminal to the child
+
+		waitpid(pid, &status, WUNTRACED); // wait for the child
+
+		// give the terminal back to the shell after child finishes
+		tcsetpgrp(STDIN_FILENO, getpgrp());
 	}
 
-	return WEXITSTATUS(status);
+	if(WIFSTOPPED(status)) {
+		add_job(shell, pid);
+		shell->joblist.jobs[shell->joblist.count-1].status = JOB_STOPPED;
+		return 128 + WSTOPSIG(status);
+	}
+
+	if(WIFSIGNALED(status)) {
+		return 128 + WTERMSIG(status);
+	}
+
+	if(WIFEXITED(status)) {
+		return WEXITSTATUS(status);
+	}
+
+	return 1;
 }
 
-int execute_pipe(ASTNode *node, Shell *shell) {
-	int fd[2]; // fd[0] -> reading end, fd[1] -> writing end
-	if (pipe(fd) == -1) {
-	    perror("pipe");
-	    return 1;
+// for executing commands in child process (for pipes, ands)
+static void exec_child(ASTNode *node, Shell *shell) {
+	BuiltIn builtin = find_builtin(node->Command.argv[0]);
+
+	if(builtin.name != NULL) {
+		int *fd = apply_redir(node, shell);
+		int status = builtin.func(node, shell);
+
+		reset_redir(fd);
+		exit(status); // because its in a child process
+	} else {
+		exec_external(node, shell);
+	}
+}
+
+void collect_pipeline(ASTNode *node, Pipeline *pipeline) {
+	if(node->ast_type == NODE_PIPE) {
+		collect_pipeline(node->Binary.left, pipeline);
+		collect_pipeline(node->Binary.right, pipeline);
+	} else {
+		pipeline->commands[pipeline->count++] = node;
+	}
+}
+
+int execute_pipeline(Pipeline *pl, Shell *shell) {
+	int pipefds[pl->count - 1][2]; // pipe one less than commands curl | grep -> 1 pipe
+	// 0 -> read, 1 -> write
+
+	// make pipes
+	for(int i = 0; i < pl->count - 1; i++) {
+		if(pipe(pipefds[i]) == -1) {
+			perror("pipe");
+			return 1;
+		}
 	}
 
-	pid_t left = fork();
-	if(left == 0) {
-		dup2(fd[1], STDOUT_FILENO);
+	pid_t pids[pl->count]; // pids array
+	pid_t pgid;
 
-		close(fd[0]);
-		close(fd[1]);
+	for(int i = 0; i < pl->count; i++) {
+		pids[i] = fork(); // child pid
 
-		// child process inside another child process
-		int exec1 = execute(node->Binary.left, shell);
-		exit(exec1); // thats why need to exit
+		if (pids[i] == -1) {
+    		perror("fork");
+    		return 1;
+		}
+
+		if(pids[i] == 0) {
+			sig_child_init(shell); // init signals to default on child
+
+			// stdin
+			if(i > 0) {
+				dup2(pipefds[i-1][0], STDIN_FILENO);
+			}
+			// stdout
+			if(i < pl->count - 1) {
+				dup2(pipefds[i][1], STDOUT_FILENO);
+			}
+
+			// child dont need pipes
+			for(int j = 0; j < pl->count - 1; j++) {
+				close(pipefds[j][0]);
+				close(pipefds[j][1]);
+			}
+
+			exec_child(pl->commands[i], shell);
+		}
+
+		// from the parent side as well 
+		if(i == 0) {
+			pgid = pids[0];
+			setpgid(pids[0], pgid);
+		} else {
+			setpgid(pids[i], pgid);
+		}
 	}
 
-	pid_t right = fork();
-	if(right == 0) {
-		dup2(fd[0], STDIN_FILENO);
-
-		close(fd[0]);
-		close(fd[1]);
-
-		int exec2 = execute(node->Binary.right, shell);
-		exit(exec2);
+	// parent dont need pipes anymore
+	for(int i = 0; i < pl->count - 1; i++) {
+		close(pipefds[i][0]);
+		close(pipefds[i][1]);
 	}
 
-	close(fd[1]);
-	close(fd[0]);
+	// give terminal ownership to process group
+	tcsetpgrp(STDIN_FILENO, pgid);
+	int status;
 
-	int left_status, right_status;
+	// wait for every child
+	for(int i = 0; i < pl->count; i++) {
+		waitpid(pids[i], &status, WUNTRACED);
+	}
 
-	// wait for both child processes to end
-	waitpid(left, &left_status, 0);
-	waitpid(right, &right_status, 0);
+	// give terminal ownership to shell
+	tcsetpgrp(STDIN_FILENO, getpgrp());
 
-	return WEXITSTATUS(right_status);
+	if(WIFSTOPPED(status)) {
+		add_job(shell, pgid);
+		shell->joblist.jobs[shell->joblist.count-1].status = JOB_STOPPED;
+		return 128 + WSTOPSIG(status);
+	}
 
+	if(WIFSIGNALED(status)) {
+		return 128 + WTERMSIG(status);
+	}
+
+	if(WIFEXITED(status)) {
+		return WEXITSTATUS(status);
+	}
+
+	return 1;
 }
 
 int execute_and(ASTNode *node, Shell *shell) {
@@ -257,5 +360,5 @@ int execute_and(ASTNode *node, Shell *shell) {
 		return execute(node->Binary.right, shell);
 	}
 
-	return 1;
+	return -1;
 }

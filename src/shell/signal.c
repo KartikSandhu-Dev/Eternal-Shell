@@ -2,8 +2,9 @@
 #include "shell/shell.h"
 #include "var/config.h"
 #include "var/common.h"
-#include <bits/types/idtype_t.h>
-#include <stdio.h>
+
+#include <signal.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -11,11 +12,32 @@ void sig_shell_init(Shell *shell) {
 	shell->joblist.capacity = JOBS_CAPACITY;
 	shell->joblist.count = 0;
 
-	shell->joblist.jobs = calloc(shell->joblist.capacity, sizeof(Job) * shell->joblist.capacity);
+	shell->joblist.jobs = calloc(shell->joblist.capacity, sizeof(Job));
+
+	if(shell->joblist.jobs == NULL) {
+		perror("calloc");
+		exit(EXIT_FAILURE);
+	}
+
+	signal(SIGINT, SIG_IGN);
+	signal(SIGTERM, SIG_IGN);
+	signal(SIGTSTP, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+	signal(SIGTTIN, SIG_IGN);
+	signal(SIGTTOU, SIG_IGN);
+
 }
 
 void sig_child_init(Shell *shell) {
+	(void)shell;
 
+	signal(SIGINT, SIG_DFL);
+	signal(SIGTERM, SIG_DFL);
+	signal(SIGTSTP, SIG_DFL);
+	signal(SIGQUIT, SIG_DFL);
+	signal(SIGCONT, SIG_DFL);
+	signal(SIGTTIN, SIG_DFL);
+	signal(SIGTTOU, SIG_DFL);
 }
 
 void add_job(Shell *shell, int pid) {
@@ -33,41 +55,62 @@ void add_job(Shell *shell, int pid) {
 
 	Job job;
 	job.id = shell->joblist.count + 1;
-	job.pid = pid;
+	job.pgid = pid;
 	job.command = strdup(shell->shell_buffer);
 	job.status = JOB_RUNNING;
 
 	shell->joblist.jobs[shell->joblist.count] = job;
 	shell->joblist.count++;
 
-	printf("|%d| %d\n", job.id, job.pid);
+	printf("|%d| %d\n", job.id, job.pgid);
 }
 
 void check_jobs(Shell *shell) {
 	int status;
 
-	for(size_t i = 0; i < shell->joblist.count; i++) {
+	for(size_t i = 0; i < shell->joblist.count;) {
 		Job *job = &shell->joblist.jobs[i];
 
-		pid_t result = waitpid(job[i].pid, 
+		pid_t result = waitpid(-job->pgid, 
 				&status, 
-				WNOHANG);
+				WNOHANG | WUNTRACED | WCONTINUED);
 
 		if(result == -1) {
     		perror("waitpid");
 		}
 
-		if(result == 0) { continue; }
+		if(result == 0) {  i++; continue; }
 
-		if(result == job->pid) {
+		if(WIFEXITED(status) || WIFSIGNALED(status)) {
 			job->status = JOB_DONE;
 
-			printf("|%d| done %s\n", job->id, job->command);
+			printf("|%d| Done (%s)\n", job->id, job->command);
 
 			clean_job(shell, i);
+			continue;
 		}
+
+		if(WIFSTOPPED(status)) {
+			job->status = JOB_STOPPED;
+			printf("|%d| Stopped (%s)\n", job->id, job->command);
+		}
+
+		if(WIFCONTINUED(status)) {
+			job->status = JOB_RUNNING;
+		}
+
+		i++;
 	}
 
+}
+
+int find_job_index(Shell *shell, int id) {
+	for(size_t i = 0; i < shell->joblist.count; i++) {
+		if(shell->joblist.jobs[i].id == id) {
+			return i;
+		}
+	}
+	return -1;
 }
 
 void clean_job(Shell *shell, size_t index) {

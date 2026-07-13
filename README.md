@@ -33,6 +33,12 @@ LshShell is a personal systems programming project built to understand how real 
 echo hello | grep h | wc
 ```
 
+* Arbitrarily long logical and
+
+```sh
+echo hello && cat input.txt && ip addr show
+```
+
 * Input redirection
 
 ```sh
@@ -106,7 +112,7 @@ Hello
 Logical AND
 
 ```sh
-make && ./program
+[lsh]@~# make && ./program
 ```
 
 Background jobs

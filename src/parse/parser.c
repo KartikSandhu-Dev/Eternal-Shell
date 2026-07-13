@@ -63,6 +63,8 @@ ASTNode *parse_command(Parser *p) {
 		node->Command.argc++;
 		advance(p);
 	}
+
+	// ["ls", "-la", NULL] 
 	node->Command.argv[node->Command.argc] = NULL;
 
 	while(current(p).token_type == TOKEN_REDIR_IN || 

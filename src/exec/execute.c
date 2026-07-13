@@ -193,7 +193,7 @@ static void exec_external(ASTNode *node, Shell *shell) {
 }
 
 int execute_command(ASTNode *node, Shell *shell) {
-	// Handle commands that consist only of redirections.
+	// handle commands that consist only of redirections
 	if (node->Command.argv[0] == NULL) {
 		int *fd = apply_redir(node, shell);
 		if (!fd) { return 1; }

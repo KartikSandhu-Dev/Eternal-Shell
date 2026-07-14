@@ -12,7 +12,7 @@
 #define BR_GREEN        "\033[92m"
 #define BR_YELLOW       "\033[93m"
 #define BR_BLUE         "\033[94m"
-#define BR_CYAN			"\033[106m"
+#define BR_CYAN			"\033[96m"
 
 // RGB Foreground colors
 #define FG_WHITE        "\033[38;2;255;255;255m"

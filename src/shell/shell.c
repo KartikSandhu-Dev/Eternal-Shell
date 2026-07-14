@@ -39,7 +39,7 @@ void shell_init(char **envp) {
 	set_env_value(&shell, "OLDPWD", "/");
 
 	add_shell_var(&shell, (ShellVar) {.name = "MADEBY", 
-									 .value = "Light-shell(lsh) made by" BR_CYAN "Kartik Sandhu!" RESET " "});
+									 .value = "Light-shell(lsh) made by " BR_CYAN "Kartik Sandhu!" RESET " "});
 
 	// ------MAIN SHELL LOOP--------
 	while(1) {

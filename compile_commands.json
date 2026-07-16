@@ -1,0 +1,155 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-Ilexer",
+      "-Iparser",
+      "-I./include",
+      "-c",
+      "-o",
+      "src/main.o",
+      "src/main.c"
+    ],
+    "directory": "/home/dome/LshShell",
+    "file": "/home/dome/LshShell/src/main.c",
+    "output": "/home/dome/LshShell/src/main.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-Ilexer",
+      "-Iparser",
+      "-I./include",
+      "-c",
+      "-o",
+      "src/parse/lexer.o",
+      "src/parse/lexer.c"
+    ],
+    "directory": "/home/dome/LshShell",
+    "file": "/home/dome/LshShell/src/parse/lexer.c",
+    "output": "/home/dome/LshShell/src/parse/lexer.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-Ilexer",
+      "-Iparser",
+      "-I./include",
+      "-c",
+      "-o",
+      "src/parse/parser.o",
+      "src/parse/parser.c"
+    ],
+    "directory": "/home/dome/LshShell",
+    "file": "/home/dome/LshShell/src/parse/parser.c",
+    "output": "/home/dome/LshShell/src/parse/parser.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-Ilexer",
+      "-Iparser",
+      "-I./include",
+      "-c",
+      "-o",
+      "src/shell/shell.o",
+      "src/shell/shell.c"
+    ],
+    "directory": "/home/dome/LshShell",
+    "file": "/home/dome/LshShell/src/shell/shell.c",
+    "output": "/home/dome/LshShell/src/shell/shell.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-Ilexer",
+      "-Iparser",
+      "-I./include",
+      "-c",
+      "-o",
+      "src/shell/variable.o",
+      "src/shell/variable.c"
+    ],
+    "directory": "/home/dome/LshShell",
+    "file": "/home/dome/LshShell/src/shell/variable.c",
+    "output": "/home/dome/LshShell/src/shell/variable.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-Ilexer",
+      "-Iparser",
+      "-I./include",
+      "-c",
+      "-o",
+      "src/shell/history.o",
+      "src/shell/history.c"
+    ],
+    "directory": "/home/dome/LshShell",
+    "file": "/home/dome/LshShell/src/shell/history.c",
+    "output": "/home/dome/LshShell/src/shell/history.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-Ilexer",
+      "-Iparser",
+      "-I./include",
+      "-c",
+      "-o",
+      "src/shell/signal.o",
+      "src/shell/signal.c"
+    ],
+    "directory": "/home/dome/LshShell",
+    "file": "/home/dome/LshShell/src/shell/signal.c",
+    "output": "/home/dome/LshShell/src/shell/signal.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-Ilexer",
+      "-Iparser",
+      "-I./include",
+      "-c",
+      "-o",
+      "src/exec/execute.o",
+      "src/exec/execute.c"
+    ],
+    "directory": "/home/dome/LshShell",
+    "file": "/home/dome/LshShell/src/exec/execute.c",
+    "output": "/home/dome/LshShell/src/exec/execute.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-Ilexer",
+      "-Iparser",
+      "-I./include",
+      "-c",
+      "-o",
+      "src/exec/builtin.o",
+      "src/exec/builtin.c"
+    ],
+    "directory": "/home/dome/LshShell",
+    "file": "/home/dome/LshShell/src/exec/builtin.c",
+    "output": "/home/dome/LshShell/src/exec/builtin.o"
+  }
+]

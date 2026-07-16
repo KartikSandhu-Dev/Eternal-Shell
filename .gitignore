@@ -1,1 +1,11 @@
-compile_flags.txt
+# Build artifacts
+*.o
+*.a
+*.so
+*.out
+
+# Executable
+lsh
+
+# clangd
+.cache/
